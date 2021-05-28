@@ -301,6 +301,7 @@ impl ServiceProvider {
                             .as_ref()
                             .and_then(|data| data.certificate.as_ref())
                         {
+                            let cert = cert.split('\n').collect::<Vec<_>>().join("");
                             if let Ok(decoded) = base64::decode(cert.as_bytes()) {
                                 if let Ok(parsed) = openssl::x509::X509::from_der(&decoded) {
                                     result.push(parsed)
@@ -331,6 +332,7 @@ impl ServiceProvider {
                                 .as_ref()
                                 .and_then(|data| data.certificate.as_ref())
                             {
+                                let cert = cert.split('\n').collect::<Vec<_>>().join("");
                                 if let Ok(decoded) = base64::decode(cert.as_bytes()) {
                                     if let Ok(parsed) = openssl::x509::X509::from_der(&decoded) {
                                         result.push(parsed)
@@ -577,5 +579,27 @@ impl AuthnRequest {
         } else {
             Ok(None)
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::service_provider::ServiceProviderBuilder;
+    use crate::metadata::EntityDescriptor;
+
+    #[test]
+    fn test_idp_signing_certs() {
+        let input_xml = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/test_vectors/samltest_id_idp_metadata.xml"
+        ));
+        let idp_metadata: EntityDescriptor = input_xml
+            .parse()
+            .expect("Failed to parse samltest_id_idp_metadata.xml into an EntityDescriptor");
+        let sp = ServiceProviderBuilder::default()
+            .idp_metadata(idp_metadata)
+            .build().unwrap();
+        let ok = sp.idp_signing_certs().unwrap().is_some();
+        assert_eq!(ok, true);
     }
 }
